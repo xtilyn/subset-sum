@@ -114,11 +114,6 @@ int main( int argc, char ** argv)
   }
 
   unsigned long n = a.size();
-  if (nThreads > n) {
-    printf("Number of threads cannot be greater than array size! \n");
-    return -1;
-  }
-
   // debug message
   printf( "Using %ld thread(s) on %lu numbers.\n",
 	  nThreads, n);
@@ -134,6 +129,12 @@ int main( int argc, char ** argv)
 
   long max = long(1) << n;
   // printf("max: %ld, ", max);
+
+  if (nThreads > max) {
+    printf("Number of threads is too big! \n");
+    return -1;
+  }
+
   if (nThreads == 1) {
     counts.push_back(0);
     test_range(1, max, 0); // range = 1 .. 2^N using bitshift
