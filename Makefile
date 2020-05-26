@@ -4,7 +4,7 @@ TESTS=$(TXTS:.txt=.test)
 
 
 a.out:	subset.cpp Makefile
-	g++ -O2 -Wall subset.cpp
+	g++ -O2 -Wall subset.cpp -l pthread
 
 clean:
 	rm -f *~ a.out
