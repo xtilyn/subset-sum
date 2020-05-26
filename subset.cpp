@@ -21,13 +21,14 @@ struct m_arguments
 {
   long from;
   long to;
+  long pid;
 };
 
 
 // global variables are bad ...
 // but they are acceptable for your first mulithreaded program
 std::vector<long> a;
-long count = 0;
+std::vector<long> counts;
 
 // for debugging purposes (if you want to print the combinations)
 void print_sol(long comb)
@@ -45,7 +46,7 @@ void print_sol(long comb)
 // test a combination 'comb'
 // the binary representation of comb will be used to decide
 // which numbers in a[] will be used to test the sum
-void test(long comb)
+void test(long comb, long pid)
 {
   long long sum = 0;
   long bits = comb;
@@ -56,17 +57,24 @@ void test(long comb)
   }
   if( sum == 0) {
     print_sol(comb);
-    count ++;
+    counts[pid]++;
   }
 }
 
 // test all combinatsion in range [from, to)
-void * test_range( void * arguments)
+void test_range( long from, long to, long pid)
 {
-  // TODO CONTINUE HERE, PASS ARGS CORRECTLY
-  struct arg_struct *args = arguments;
-  for( long i = (args -> from) ; i < to ; i ++)
-    test(i);
+  for( long i = from ; i < to ; i ++)
+    test(i, pid);
+}
+
+void * test_range_2( void * args) {
+  m_arguments * arguments = (m_arguments *) args; 
+  printf("from %ld, to %ld, pid %ld\n", arguments -> from, arguments -> to, arguments -> pid);
+  long from = arguments -> from;
+  long to = arguments -> to;
+  long pid = arguments -> pid;
+  test_range( from, long(1) << a.size(), pid); // TODO CONTINUE HERE...
   pthread_exit(0);
 }
 
@@ -89,9 +97,11 @@ int main( int argc, char ** argv)
       printf("Expected integer, but you gave me '%s'\n", argv[1]);
       return -1;
     }
-  }
-  if( nThreads > 1) {
-    printf("Sorry, I don't know how to use multiple threads yet.\n");
+
+    if (nThreads <= 0) {
+      printf("Number of threads must be greater than 0! \n");
+      return -1;
+    }
   }
 
   //
@@ -103,8 +113,13 @@ int main( int argc, char ** argv)
     a.push_back(n);
   }
 
-  // debug message
   unsigned long n = a.size();
+  if (nThreads > n) {
+    printf("Number of threads cannot be greater than array size! \n");
+    return -1;
+  }
+
+  // debug message
   printf( "Using %ld thread(s) on %lu numbers.\n",
 	  nThreads, n);
 
@@ -117,18 +132,29 @@ int main( int argc, char ** argv)
   // you should make separate counters for each thread
   //
 
-  count = 0;
   if (nThreads == 1) {
-    test_range(1, long(1) << n); // range = 1 .. 2^N using bitshift
+    counts.push_back(0);
+    test_range(1, long(1) << n, 0); // range = 1 .. 2^N using bitshift
   } else {
+    for (long c = 0; c < nThreads; c++) counts.push_back(0);
     unsigned long numsPerThread = n / nThreads;
-    printf("nums per thread: %lu", numsPerThread);
+    printf("nums per thread: %lu\n", numsPerThread);
 
     pthread_t threads[nThreads];
     long from = 0;
+    struct m_arguments args[nThreads];
     for (long i = 0; i < nThreads; i++) {
+      args[i].from = from;
+      args[i].pid = i;
+
       long to = from + numsPerThread;
-      long status = pthread_create(&threads[i], NULL, test_range, from, numsPerThread);
+      if (to > n - 1 || (i == nThreads - 1 && to < n - 1)) {
+        args[i].to = n - 1;
+      } else {
+        args[i].to = to;
+      }
+
+      long status = pthread_create(&threads[i], NULL, test_range_2, &args[i]);
       if (status != 0) {
         printf("Oops, pthread_create returned error code %ld\n", status);
         exit(-1);
@@ -139,7 +165,6 @@ int main( int argc, char ** argv)
     for (long j = 0; j < nThreads; j++) {
       pthread_join(threads[j], NULL);
     }
-    exit(0);
   }
 
   //
@@ -149,6 +174,10 @@ int main( int argc, char ** argv)
   // since this version does not use multiple counters, report the only
   // one we have
   //
+  long count = 0;
+  for (long t = 0; t < nThreads; t++) {
+    count += counts[t];
+  }
   printf("Subsets found: %ld\n", count);
 
   return 0;
