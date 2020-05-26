@@ -70,11 +70,11 @@ void test_range( long from, long to, long pid)
 
 void * test_range_2( void * args) {
   m_arguments * arguments = (m_arguments *) args; 
-  printf("from %ld, to %ld, pid %ld\n", arguments -> from, arguments -> to, arguments -> pid);
+  // printf("from %ld, to %ld, pid %ld\n", arguments -> from, arguments -> to, arguments -> pid);
   long from = arguments -> from;
   long to = arguments -> to;
   long pid = arguments -> pid;
-  test_range( from, long(1) << a.size(), pid); // TODO CONTINUE HERE...
+  test_range(from, to, pid);
   pthread_exit(0);
 }
 
@@ -132,24 +132,26 @@ int main( int argc, char ** argv)
   // you should make separate counters for each thread
   //
 
+  long max = long(1) << n;
+  // printf("max: %ld, ", max);
   if (nThreads == 1) {
     counts.push_back(0);
-    test_range(1, long(1) << n, 0); // range = 1 .. 2^N using bitshift
+    test_range(1, max, 0); // range = 1 .. 2^N using bitshift
   } else {
     for (long c = 0; c < nThreads; c++) counts.push_back(0);
-    unsigned long numsPerThread = n / nThreads;
-    printf("nums per thread: %lu\n", numsPerThread);
+    unsigned long numsPerThread = max / nThreads;
+    // printf("nums per thread: %lu\n", numsPerThread);
 
     pthread_t threads[nThreads];
-    long from = 0;
+    long from = 1;
     struct m_arguments args[nThreads];
     for (long i = 0; i < nThreads; i++) {
       args[i].from = from;
       args[i].pid = i;
 
       long to = from + numsPerThread;
-      if (to > n - 1 || (i == nThreads - 1 && to < n - 1)) {
-        args[i].to = n - 1;
+      if (to > max - 1 || (i == max - 1 && to < max - 1)) {
+        args[i].to = max - 1;
       } else {
         args[i].to = to;
       }
