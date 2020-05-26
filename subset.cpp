@@ -150,8 +150,8 @@ int main( int argc, char ** argv)
       args[i].pid = i;
 
       long to = from + numsPerThread;
-      if (to > max - 1 || (i == max - 1 && to < max - 1)) {
-        args[i].to = max - 1;
+      if (to > max || (i == nThreads - 1 && i < max)) {
+        args[i].to = max;
       } else {
         args[i].to = to;
       }
