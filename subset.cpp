@@ -15,6 +15,14 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <errno.h>
+#include <pthread.h>
+
+struct m_arguments
+{
+  long from;
+  long to;
+};
+
 
 // global variables are bad ...
 // but they are acceptable for your first mulithreaded program
@@ -53,10 +61,13 @@ void test(long comb)
 }
 
 // test all combinatsion in range [from, to)
-void test_range( long from, long to)
+void * test_range( void * arguments)
 {
-  for( long i = from ; i < to ; i ++)
+  // TODO CONTINUE HERE, PASS ARGS CORRECTLY
+  struct arg_struct *args = arguments;
+  for( long i = (args -> from) ; i < to ; i ++)
     test(i);
+  pthread_exit(0);
 }
 
 int main( int argc, char ** argv)
@@ -81,7 +92,6 @@ int main( int argc, char ** argv)
   }
   if( nThreads > 1) {
     printf("Sorry, I don't know how to use multiple threads yet.\n");
-    nThreads = 1;
   }
 
   //
@@ -94,8 +104,9 @@ int main( int argc, char ** argv)
   }
 
   // debug message
+  unsigned long n = a.size();
   printf( "Using %ld thread(s) on %lu numbers.\n",
-	  nThreads, a.size());
+	  nThreads, n);
 
   //
   // to convert this into multithreaded code, you should
@@ -105,8 +116,31 @@ int main( int argc, char ** argv)
   // to make the code work without synchronization mechanisms,
   // you should make separate counters for each thread
   //
+
   count = 0;
-  test_range(1, long(1) << a.size()); // range = 1 .. 2^N using bitshift
+  if (nThreads == 1) {
+    test_range(1, long(1) << n); // range = 1 .. 2^N using bitshift
+  } else {
+    unsigned long numsPerThread = n / nThreads;
+    printf("nums per thread: %lu", numsPerThread);
+
+    pthread_t threads[nThreads];
+    long from = 0;
+    for (long i = 0; i < nThreads; i++) {
+      long to = from + numsPerThread;
+      long status = pthread_create(&threads[i], NULL, test_range, from, numsPerThread);
+      if (status != 0) {
+        printf("Oops, pthread_create returned error code %ld\n", status);
+        exit(-1);
+      }
+      from += numsPerThread;
+    }
+
+    for (long j = 0; j < nThreads; j++) {
+      pthread_join(threads[j], NULL);
+    }
+    exit(0);
+  }
 
   //
   // once you join the threads, you can simply sum up the counters
